@@ -1,5 +1,38 @@
 import { supabase } from './supabase'
 
+// ─── AUTH ────────────────────────────────────────────────────
+export const authApi = {
+  async getProfile() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const { data, error } = await supabase
+      .from('cms_profiles').select('*').eq('id', user.id).single()
+    if (error) return null
+    return { ...data, email: user.email }
+  },
+  async updateProfile({ name, foto_url }) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    const payload = {}
+    if (name     !== undefined) payload.name     = name
+    if (foto_url !== undefined) payload.foto_url = foto_url
+    const { data, error } = await supabase
+      .from('cms_profiles').update(payload).eq('id', user.id).select().single()
+    if (error) throw error
+    return data
+  },
+  async uploadAvatar(file) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    const ext = file.name.split('.').pop()
+    const path = `avatars/${user.id}.${ext}`
+    const { error } = await supabase.storage.from('profil').upload(path, file, { upsert: true })
+    if (error) throw error
+    const { data } = supabase.storage.from('profil').getPublicUrl(path)
+    return data.publicUrl
+  },
+}
+
 // ─── STORAGE HELPER ─────────────────────────────────────────
 export async function uploadFile(bucket, file, path) {
   const ext = file.name.split('.').pop()

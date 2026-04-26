@@ -4,38 +4,43 @@ import TextField from '../components/TextField'
 import { ButtonPrimary } from '../components/Button'
 import Snackbar from '../components/Snackbar'
 import { IconEye, IconEyeSlash, IconCloseCircle } from '../components/Icons'
+import { supabase } from '../lib/supabase'
 
 export default function LoginScreen({ onLogin }) {
-  const [username, setUsername] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState({})
-  const [snack, setSnack] = useState(null)
+  const [loading,  setLoading]  = useState(false)
+  const [errors,   setErrors]   = useState({})
+  const [snack,    setSnack]    = useState(null)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e?.preventDefault?.()
     const newErrors = {}
-    if (!username.trim()) newErrors.username = 'Oops, kolom nama pengguna harus diisi yah.'
-    if (!password)        newErrors.password = 'Oops, kolom kata sandi harus diisi yah.'
+    if (!email.trim())  newErrors.email    = 'Oops, kolom email harus diisi yah.'
+    if (!password)      newErrors.password = 'Oops, kolom kata sandi harus diisi yah.'
     if (Object.keys(newErrors).length) {
       setErrors(newErrors)
-      setSnack({ type: 'error', title: 'Login gagal.', message: 'silahkan cek kembali nama pengguna atau kata sandi Anda' })
+      setSnack({ type: 'error', title: 'Login gagal.', message: 'Silahkan cek kembali email atau kata sandi Anda.' })
       return
     }
     setErrors({})
     setLoading(true)
-    setTimeout(() => {
-      if (password.toLowerCase() === 'wrong') {
-        setLoading(false)
-        setErrors({ password: 'Password anda belum sesuai. Coba lagi ya.' })
-        setSnack({ type: 'error', title: 'Login gagal.', message: 'silahkan cek kembali nama pengguna atau kata sandi Anda' })
-        return
-      }
-      setLoading(false)
-      setSnack({ type: 'success', title: 'Login Berhasil', message: 'selamat menikmati beragam fitur cms kami, dan kelola konten website anda!' })
-      setTimeout(() => onLogin(), 900)
-    }, 1200)
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+    setLoading(false)
+    if (error) {
+      const msg = error.message?.toLowerCase().includes('invalid')
+        ? 'Email atau kata sandi tidak sesuai. Coba lagi ya.'
+        : error.message
+      setErrors({ password: msg })
+      setSnack({ type: 'error', title: 'Login gagal.', message: 'Silahkan cek kembali email atau kata sandi Anda.' })
+      return
+    }
+    setSnack({ type: 'success', title: 'Login Berhasil', message: 'Selamat menikmati beragam fitur CMS kami!' })
+    setTimeout(() => onLogin(data.session), 900)
   }
 
   return (
@@ -77,12 +82,12 @@ export default function LoginScreen({ onLogin }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <TextField
-              label="Nama Pengguna" required value={username}
-              onChange={v => { setUsername(v); if (errors.username) setErrors(e => ({ ...e, username: null })) }}
-              placeholder="Masukkan nama pengguna"
-              icon={username ? <IconCloseCircle size={20} /> : null}
-              onIconClick={() => setUsername('')}
-              error={errors.username} autoFocus
+              label="Email" required type="email" value={email}
+              onChange={v => { setEmail(v); if (errors.email) setErrors(e => ({ ...e, email: null })) }}
+              placeholder="Masukkan alamat email"
+              icon={email ? <IconCloseCircle size={20} /> : null}
+              onIconClick={() => setEmail('')}
+              error={errors.email} autoFocus
             />
             <TextField
               label="Kata Sandi" required type={showPass ? 'text' : 'password'} value={password}
