@@ -186,12 +186,14 @@ function ListBlock({ block, onChange, onClick }) {
           <span style={{ fontFamily: 'var(--font-base)', color: 'var(--color-text-dark)', minWidth: 22, textAlign: 'right', flexShrink: 0, fontSize: 'clamp(15px, 1.1vw, 17px)', lineHeight: 1.7 }}>
             {style === 'number' ? `${i + 1}.` : '•'}
           </span>
-          <input
+          <textarea
             value={item}
-            onChange={e => updateItem(i, e.target.value)}
+            onChange={e => { updateItem(i, e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
             placeholder={`Item ${i + 1}…`}
             onClick={e => e.stopPropagation()}
-            style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'var(--font-base)', fontSize: 'clamp(15px, 1.1vw, 17px)', color: 'var(--color-text-base)', lineHeight: 1.7, background: 'transparent' }}
+            rows={1}
+            style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'var(--font-base)', fontSize: 'clamp(15px, 1.1vw, 17px)', color: 'var(--color-text-base)', lineHeight: 1.7, background: 'transparent', resize: 'none', overflow: 'hidden', padding: 0 }}
           />
           {items.length > 1 && (
             <button onClick={e => removeItem(e, i)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: 'var(--color-text-muted)', fontSize: 18, lineHeight: 1 }}>×</button>
