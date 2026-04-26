@@ -252,8 +252,7 @@ export const profilApi = {
   async save(pageKey, blocks) {
     const { data, error } = await supabase
       .from('profil_pages')
-      .update({ blocks, updated_at: new Date().toISOString() })
-      .eq('page_key', pageKey)
+      .upsert({ page_key: pageKey, blocks, updated_at: new Date().toISOString() }, { onConflict: 'page_key' })
       .select().single()
     if (error) throw error
     return data

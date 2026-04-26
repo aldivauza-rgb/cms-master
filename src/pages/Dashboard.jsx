@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Snackbar from '../components/Snackbar'
 import Logo from '../components/Logo'
@@ -29,8 +29,20 @@ export default function Dashboard({ onLogout }) {
   const [sideOpen,      setSideOpen]      = useState(false)
   const [notifOpen,     setNotifOpen]     = useState(false)
   const [notifications, setNotifications] = useState(SEED_NOTIFS)
-  // Always start at Analisis Web on every login (no localStorage persistence)
-  const [page, setPage] = useState('analitik')
+
+  const VALID_PAGES = ['analitik','slideshow','berita','agenda','dokumen','majalah','fasilitas','tentang','visimisi','sambutan','struktur','akreditasi','statistik','akun','gurustaf']
+  const getPageFromHash = () => { const h = window.location.hash.slice(1); return VALID_PAGES.includes(h) ? h : 'analitik' }
+  const [page, setPage] = useState(getPageFromHash)
+
+  useEffect(() => {
+    const onHash = () => setPage(getPageFromHash())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const navigate = (p) => { window.location.hash = p; setPage(p) }
+
+  const handleLogout = () => { window.location.hash = ''; onLogout() }
 
   const fireSnack = (s) => { setSnack(s); setTimeout(() => setSnack(null), 3000) }
 
@@ -70,9 +82,9 @@ export default function Dashboard({ onLogout }) {
       <Sidebar
         open={sideOpen}
         onClose={() => setSideOpen(false)}
-        onLogout={onLogout}
+        onLogout={handleLogout}
         page={page}
-        setPage={setPage}
+        setPage={navigate}
         onNotifOpen={() => setNotifOpen(true)}
         notifCount={unreadCount}
       />
