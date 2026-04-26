@@ -290,7 +290,7 @@ export const guruStafApi = {
 export const akunApi = {
   async getAll() {
     const { data, error } = await supabase
-      .from('akun').select('id,name,username,role,is_active,created_at').order('created_at')
+      .from('akun').select('id,name,username,password,role,is_active,created_at').order('created_at')
     if (error) throw error
     return data
   },
