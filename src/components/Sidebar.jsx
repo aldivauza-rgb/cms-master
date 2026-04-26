@@ -298,7 +298,9 @@ export default function Sidebar({ open, onClose, onLogout, page, setPage, onNoti
               {photoSrc ? (
                 <img src={photoSrc} alt="" style={{ width: 'clamp(32px, 2.4vw, 40px)', height: 'clamp(32px, 2.4vw, 40px)', borderRadius: '50%', objectFit: 'cover', border: '1px solid #97A2B0', flexShrink: 0 }} />
               ) : (
-                <img src={avatarUrl} alt="" style={{ width: 'clamp(32px, 2.4vw, 40px)', height: 'clamp(32px, 2.4vw, 40px)', borderRadius: '50%', objectFit: 'cover', border: '1px solid #97A2B0', flexShrink: 0 }} />
+                <div style={{ width: 'clamp(32px, 2.4vw, 40px)', height: 'clamp(32px, 2.4vw, 40px)', borderRadius: '50%', background: '#046CF2', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 'clamp(11px, 0.9vw, 15px)', color: '#fff', border: '1px solid #97A2B0' }}>
+                  {profileName.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')}
+                </div>
               )}
               <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
                 <div style={{ fontFamily: 'var(--font-base)', fontWeight: 500, fontSize: 'var(--text-base)', lineHeight: 1.4, color: '#F9F9F9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileName}</div>
