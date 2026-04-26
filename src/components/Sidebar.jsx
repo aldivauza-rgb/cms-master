@@ -41,7 +41,7 @@ function SidebarItem({ icon: IconC, label, active, choose, onClick, badge }) {
       <IconC size={20} stroke={textColor} />
       <span style={{ fontFamily: 'var(--font-base)', fontWeight: 500, fontSize: 'var(--text-base)', color: textColor, flex: 1, textAlign: 'left' }}>{label}</span>
       {badge != null && (
-        <span style={{ minWidth: 24, height: 24, borderRadius: 12, padding: '0 8px', background: 'var(--color-blue-light)', color: 'var(--color-blue)', fontFamily: 'var(--font-base)', fontWeight: 600, fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>
+        <span style={{ minWidth: 24, height: 24, borderRadius: 12, padding: '0 8px', background: '#E11D48', color: '#fff', fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>
       )}
     </button>
   )
