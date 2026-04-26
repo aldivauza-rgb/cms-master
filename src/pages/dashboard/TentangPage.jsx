@@ -182,7 +182,7 @@ function ListBlock({ block, onChange, onClick }) {
   return (
     <div onClick={onClick} style={{ cursor: 'text' }}>
       {items.map((item, i) => (
-        <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+        <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 6 }}>
           <span style={{ fontFamily: 'var(--font-base)', color: 'var(--color-text-dark)', minWidth: 22, textAlign: 'right', flexShrink: 0, fontSize: 'clamp(15px, 1.1vw, 17px)', lineHeight: 1.7 }}>
             {style === 'number' ? `${i + 1}.` : '•'}
           </span>
