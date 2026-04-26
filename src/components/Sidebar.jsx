@@ -8,6 +8,7 @@ import {
   IconSetting, IconInbox, IconChevronDown, IconExit,
 } from './Icons'
 import avatarUrl from '../assets/avatar.png'
+import { authApi } from '../lib/api'
 
 // ─── local icons ─────────────────────────────────────────────
 const IUser = () => (
@@ -140,6 +141,13 @@ export default function Sidebar({ open, onClose, onLogout, page, setPage, onNoti
   const [showLogout,    setShowLogout]    = useState(false)
   const [profileName,   setProfileName]   = useState('Username')
   const [profilePhoto,  setProfilePhoto]  = useState(null)
+
+  useEffect(() => {
+    authApi.getProfile().then(p => {
+      if (p?.name) setProfileName(p.name)
+      if (p?.foto_url) setProfilePhoto(p.foto_url)
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (isProfilPage) { setProfilOpen(true); setInformasiOpen(false) }

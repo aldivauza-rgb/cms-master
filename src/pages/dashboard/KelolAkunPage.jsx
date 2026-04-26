@@ -30,7 +30,7 @@ const ROLE_COLORS = {
 const AVATAR_PALETTES = [
   '#046CF2','#7C3AED','#DB2777','#D97706','#059669','#DC2626','#0891B2',
 ]
-const avatarColor = (name) => AVATAR_PALETTES[(name.charCodeAt(0) || 0) % AVATAR_PALETTES.length]
+const avatarColor = (name) => AVATAR_PALETTES[name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % AVATAR_PALETTES.length]
 
 const INITIAL_ACCOUNTS = [
   { id: 1, name: 'Budi Santoso',   username: 'budi.santoso',   password: 'Budi@2026#',  role: 'operator', active: true  },
