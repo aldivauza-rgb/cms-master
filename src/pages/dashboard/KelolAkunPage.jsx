@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Toggle from '../../components/Toggle'
 import { ButtonPrimary, ButtonSecondary } from '../../components/Button'
 import { ConfirmModal } from '../../components/Modal'
 import TextField from '../../components/TextField'
 import { IconAdd, IconEdit, IconTrash, IconExit, IconEye, IconEyeSlash } from '../../components/Icons'
+import { akunApi } from '../../lib/api'
 
 // ── helpers ───────────────────────────────────────────────────────
 const genPassword = () => {
@@ -307,43 +308,81 @@ function AccountDrawer({ account, onClose, onSave }) {
 
 // ── Main Page ─────────────────────────────────────────────────────
 export default function KelolAkunPage({ fireSnack, fireNotif }) {
-  const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS)
-  const [drawer, setDrawer]     = useState(null)   // null | 'add' | account object
+  const [accounts,   setAccounts]   = useState([])
+  const [drawer,     setDrawer]     = useState(null)
   const [confirmDel, setConfirmDel] = useState(null)
+  const [loading,    setLoading]    = useState(true)
 
-  const openAdd  = () => setDrawer({ isNew: true })
-  const openEdit = (acc) => setDrawer(acc)
+  const dbToUi = (a) => ({ id: a.id, name: a.name, username: a.username, password: a.password, role: a.role, active: a.is_active })
+
+  const load = async () => {
+    try {
+      const data = await akunApi.getAll()
+      setAccounts(data.map(dbToUi))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal memuat', message: e.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openAdd     = () => setDrawer({ isNew: true })
+  const openEdit    = (acc) => setDrawer(acc)
   const closeDrawer = () => setDrawer(null)
 
-  const handleToggle = (id, value) => {
+  const handleToggle = async (id, value) => {
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, active: value } : a))
-    const data = accounts.find(a => a.id === id)
-    fireSnack({ type: 'success', title: 'Berhasil', message: value ? 'Akun diaktifkan' : 'Akun dinonaktifkan' })
-    fireNotif?.({ action: 'toggle', feature: 'Kelola Akun', item: data?.username || '' })
-  }
-
-  const handleSave = (data) => {
-    if (data.id) {
-      setAccounts(prev => prev.map(a => a.id === data.id ? { ...a, ...data } : a))
-      fireSnack({ type: 'success', title: 'Tersimpan', message: 'Data akun berhasil diperbarui' })
-      fireNotif?.({ action: 'update', feature: 'Kelola Akun', item: data.username })
-    } else {
-      const nextId = Math.max(0, ...accounts.map(a => a.id)) + 1
-      setAccounts(prev => [...prev, { ...data, id: nextId, active: true }])
-      fireSnack({ type: 'primary', title: 'Akun dibuat', message: `Akun @${data.username} berhasil ditambahkan` })
-      fireNotif?.({ action: 'create', feature: 'Kelola Akun', item: data.username })
+    const acct = accounts.find(a => a.id === id)
+    try {
+      await akunApi.update(id, { is_active: value })
+      fireSnack({ type: 'success', title: 'Berhasil', message: value ? 'Akun diaktifkan' : 'Akun dinonaktifkan' })
+      fireNotif?.({ action: 'toggle', feature: 'Kelola Akun', item: acct?.username || '' })
+    } catch (e) {
+      setAccounts(prev => prev.map(a => a.id === id ? { ...a, active: !value } : a))
+      fireSnack({ type: 'error', title: 'Gagal', message: e.message })
     }
-    closeDrawer()
   }
 
-  const handleDelete = () => {
-    setAccounts(prev => prev.filter(a => a.id !== confirmDel.id))
-    fireSnack({ type: 'success', title: 'Dihapus', message: `Akun @${confirmDel.username} telah dihapus` })
-    fireNotif?.({ action: 'delete', feature: 'Kelola Akun', item: confirmDel?.username || '' })
+  const handleSave = async (data) => {
+    closeDrawer()
+    try {
+      const payload = { name: data.name, username: data.username, password: data.password, role: data.role, is_active: data.active ?? true }
+      if (data.id) {
+        await akunApi.update(data.id, payload)
+        fireSnack({ type: 'success', title: 'Tersimpan', message: 'Data akun berhasil diperbarui' })
+        fireNotif?.({ action: 'update', feature: 'Kelola Akun', item: data.username })
+      } else {
+        await akunApi.create(payload)
+        fireSnack({ type: 'primary', title: 'Akun dibuat', message: `Akun @${data.username} berhasil ditambahkan` })
+        fireNotif?.({ action: 'create', feature: 'Kelola Akun', item: data.username })
+      }
+      const fresh = await akunApi.getAll()
+      setAccounts(fresh.map(dbToUi))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
+      akunApi.getAll().then(d => setAccounts(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  const handleDelete = async () => {
+    const { id, username } = confirmDel
     setConfirmDel(null)
+    setAccounts(prev => prev.filter(a => a.id !== id))
+    try {
+      await akunApi.remove(id)
+      fireSnack({ type: 'success', title: 'Dihapus', message: `Akun @${username} telah dihapus` })
+      fireNotif?.({ action: 'delete', feature: 'Kelola Akun', item: username })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menghapus', message: e.message })
+      akunApi.getAll().then(d => setAccounts(d.map(dbToUi))).catch(() => {})
+    }
   }
 
   const activeCount = accounts.filter(a => a.active).length
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
 
   return (
     <>

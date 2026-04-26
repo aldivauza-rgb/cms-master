@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { ButtonPrimary, ButtonSecondary } from '../../components/Button'
 import TextField from '../../components/TextField'
 import SearchInput from '../../components/SearchInput'
@@ -12,6 +12,8 @@ import { IconAdd, IconEdit, IconTrash, IconExport, IconBack, IconCalendar } from
 import avatarUrl   from '../../assets/avatar.png'
 import slideRowUrl from '../../assets/slide-row.jpg'
 import slideDefUrl from '../../assets/slide-default.jpg'
+import { agendaApi } from '../../lib/api'
+import { uploadToStorage } from '../../lib/upload'
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
 const fmtShort = (iso) => { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)} ${d.getFullYear()}` }
@@ -354,24 +356,72 @@ function AgendaForm({ initial, onBack, onSave, fireSnack }) {
 }
 
 export default function AgendaPage({ fireSnack, fireNotif }) {
-  const [items,   setItems]   = useState(INITIAL_AGENDA)
+  const [items,   setItems]   = useState([])
   const [editing, setEditing] = useState(null)
   const [view,    setView]    = useState('list')
+  const [loading, setLoading] = useState(true)
 
-  const handleSave = (data) => {
-    if (data.id) {
-      setItems(prev => prev.map(n => n.id === data.id ? { ...n, ...data } : n))
-      fireSnack({ type: 'success', title: 'Tersimpan', message: data.status === 'terbit' ? 'Agenda diterbitkan' : 'Agenda tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'draft', feature: 'Agenda', item: data.title })
-    } else {
-      const nextId = Math.max(0, ...items.map(n => n.id)) + 1
-      setItems(prev => [{ ...data, id: nextId }, ...prev])
-      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Agenda diterbitkan' : 'Agenda tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'create', feature: 'Agenda', item: data.title })
+  const dbToUi = (n) => ({
+    id: n.id, title: n.title,
+    organizer: n.organizer || '',
+    location: n.lokasi || '',
+    date: n.tanggal || '',
+    time: n.waktu || '',
+    content: n.deskripsi || '',
+    thumb: n.thumb_url || '',
+    publisher: n.publisher || '',
+    status: n.status,
+  })
+
+  const load = async () => {
+    try {
+      const data = await agendaApi.getAll()
+      setItems(data.map(dbToUi))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal memuat', message: e.message })
+    } finally {
+      setLoading(false)
     }
-    setView('list'); setEditing(null)
   }
 
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSave = async (data) => {
+    setView('list'); setEditing(null)
+    try {
+      const thumbUrl = await uploadToStorage(data.thumb, 'agenda', 'thumbs/')
+      const payload = {
+        title: data.title, organizer: data.organizer,
+        tanggal: data.date || null, waktu: data.time || null,
+        lokasi: data.location, deskripsi: data.content,
+        thumb_url: thumbUrl || data.thumb || null,
+        publisher: data.publisher || 'Admin',
+        status: data.status,
+      }
+      if (data.id) await agendaApi.update(data.id, payload)
+      else await agendaApi.create(payload)
+      const fresh = await agendaApi.getAll()
+      setItems(fresh.map(dbToUi))
+      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Agenda diterbitkan' : 'Agenda tersimpan sebagai draf' })
+      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : (data.id ? 'update' : 'create'), feature: 'Agenda', item: data.title })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
+      agendaApi.getAll().then(d => setItems(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  const handleDelete = async (id) => {
+    setItems(prev => prev.filter(n => n.id !== id))
+    try {
+      await agendaApi.remove(id)
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menghapus', message: e.message })
+      agendaApi.getAll().then(d => setItems(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
+
   if (view === 'form') return <AgendaForm initial={editing} onBack={() => setView('list')} onSave={handleSave} fireSnack={fireSnack} />
-  return <AgendaList items={items} onAdd={() => { setEditing(null); setView('form') }} onEdit={n => { setEditing(n); setView('form') }} onDelete={id => setItems(prev => prev.filter(n => n.id !== id))} fireSnack={fireSnack} fireNotif={fireNotif} />
+  return <AgendaList items={items} onAdd={() => { setEditing(null); setView('form') }} onEdit={n => { setEditing(n); setView('form') }} onDelete={handleDelete} fireSnack={fireSnack} fireNotif={fireNotif} />
 }

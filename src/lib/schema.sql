@@ -47,13 +47,14 @@ create trigger trg_cms_profiles_updated_at
 
 -- ─── SLIDES (Slideshow) ─────────────────────────────────────
 create table if not exists slides (
-  id         uuid primary key default gen_random_uuid(),
-  title      text,
-  image_url  text,
-  "order"    integer not null default 0,
-  is_active  boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  title       text,
+  description text,
+  image_url   text,
+  "order"     integer not null default 0,
+  is_active   boolean not null default true,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
 );
 
 create trigger trg_slides_updated_at
@@ -73,7 +74,7 @@ create table if not exists berita (
   content      text,
   cover_url    text,
   kategori_id  uuid references berita_kategori(id) on delete set null,
-  status       text not null default 'draft' check (status in ('draft','published')),
+  status       text not null default 'draf' check (status in ('draf','terbit')),
   publisher    text,
   published_at date,
   created_at   timestamptz not null default now(),
@@ -88,11 +89,14 @@ create trigger trg_berita_updated_at
 create table if not exists agenda (
   id         uuid primary key default gen_random_uuid(),
   title      text not null,
+  organizer  text,
+  publisher  text,
   tanggal    date,
   waktu      time,
   lokasi     text,
   deskripsi  text,
-  status     text not null default 'draft' check (status in ('draft','published')),
+  thumb_url  text,
+  status     text not null default 'draf' check (status in ('draf','terbit')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -108,7 +112,7 @@ create table if not exists dokumen (
   publisher  text,
   tanggal    date,
   link_url   text,
-  status     text not null default 'draft' check (status in ('draft','published')),
+  status     text not null default 'draf' check (status in ('draf','terbit')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -126,7 +130,7 @@ create table if not exists majalah (
   tanggal    date,
   cover_url  text,
   link_url   text,
-  status     text not null default 'draft' check (status in ('draft','published')),
+  status     text not null default 'draf' check (status in ('draf','terbit')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -143,7 +147,7 @@ create table if not exists fasilitas (
   publisher    text,
   tanggal      date,
   cover_index  integer not null default 0,
-  status       text not null default 'draft' check (status in ('draft','published')),
+  status       text not null default 'draf' check (status in ('draf','terbit')),
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
@@ -193,7 +197,7 @@ create table if not exists guru_staf (
   riwayat_pendidikan jsonb not null default '[]'::jsonb,
   pengalaman_kerja   jsonb not null default '[]'::jsonb,
   prestasi           jsonb not null default '[]'::jsonb,
-  status             text not null default 'draft' check (status in ('draft','published')),
+  status             text not null default 'draf' check (status in ('draf','terbit')),
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
@@ -272,3 +276,22 @@ end $$;
 --   Policy name  : allow_authenticated_uploads
 --   Allowed ops  : SELECT, INSERT, UPDATE, DELETE
 --   Target roles : authenticated
+--
+-- Bucket tambahan untuk agenda:
+--   agenda           | Thumbnail agenda event
+
+-- ─── MIGRATION (jika skema lama sudah dijalankan) ────────────
+-- Jalankan blok ini jika tabel sudah ada dari versi sebelumnya:
+
+alter table if exists slides    add column if not exists description text;
+alter table if exists agenda    add column if not exists organizer  text;
+alter table if exists agenda    add column if not exists publisher  text;
+alter table if exists agenda    add column if not exists thumb_url  text;
+
+-- Fix status check constraints (drop lama, buat baru)
+do $$ declare tbl text; begin
+  foreach tbl in array array['berita','agenda','dokumen','majalah','fasilitas','guru_staf'] loop
+    execute format('alter table if exists %I drop constraint if exists %I', tbl, tbl || '_status_check');
+    execute format('alter table if exists %I add constraint %I check (status in (''draf'',''terbit''))', tbl, tbl || '_status_check');
+  end loop;
+end $$;

@@ -12,6 +12,8 @@ import {
 } from '../../components/Icons'
 import avatarUrl from '../../assets/avatar.png'
 import slideRowUrl from '../../assets/slide-row.jpg'
+import { fasilitasApi } from '../../lib/api'
+import { uploadToStorage } from '../../lib/upload'
 import slideDefaultUrl from '../../assets/slide-default.jpg'
 import coverWartaUrl from '../../assets/cover-warta.jpg'
 import coverSuaraUrl from '../../assets/cover-suara.jpg'
@@ -390,27 +392,69 @@ function FasilitasForm({ initial, onBack, onSave, fireSnack }) {
 }
 
 export default function FasilitasPage({ fireSnack, fireNotif }) {
-  const [items, setItems] = useState(INITIAL_FASILITAS)
+  const [items,   setItems]   = useState([])
   const [editing, setEditing] = useState(null)
-  const [view, setView] = useState('list')
+  const [view,    setView]    = useState('list')
+  const [loading, setLoading] = useState(true)
 
-  const openAdd = () => { setEditing(null); setView('form') }
-  const openEdit = (n) => { setEditing(n); setView('form') }
-  const handleDelete = (id) => setItems(prev => prev.filter(n => n.id !== id))
-  const handleSave = (data) => {
-    if (data.id) {
-      setItems(prev => prev.map(n => n.id === data.id ? { ...n, ...data } : n))
-      fireSnack({ type: 'success', title: 'Tersimpan', message: data.status === 'terbit' ? 'Fasilitas telah diterbitkan' : 'Fasilitas tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'draft', feature: 'Fasilitas', item: data.title })
-    } else {
-      const nextId = Math.max(0, ...items.map(n => n.id)) + 1
-      setItems(prev => [{ ...data, id: nextId }, ...prev])
-      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Fasilitas telah diterbitkan' : 'Fasilitas tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'create', feature: 'Fasilitas', item: data.title })
-    }
-    setView('list'); setEditing(null)
+  const dbToUi = (n) => {
+    const gallery = (n.fasilitas_gallery || []).sort((a, b) => a.order - b.order)
+    return { id: n.id, title: n.title, description: n.deskripsi || '', images: gallery.map(g => g.image_url), coverIndex: n.cover_index ?? 0, publisher: n.publisher || '', date: n.tanggal || '', status: n.status }
   }
 
+  const load = async () => {
+    try {
+      const data = await fasilitasApi.getAll()
+      setItems(data.map(dbToUi))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal memuat', message: e.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSave = async (data) => {
+    setView('list'); setEditing(null)
+    try {
+      const uploadedImages = await Promise.all(
+        data.images.map(src => uploadToStorage(src, 'fasilitas', 'gallery/'))
+      )
+      const finalImages = uploadedImages.map((url, i) => url || data.images[i])
+
+      const payload = { title: data.title, deskripsi: data.description, publisher: data.publisher || 'Admin', tanggal: data.date || null, cover_index: data.coverIndex ?? 0, status: data.status }
+      let id = data.id
+      if (id) {
+        await fasilitasApi.update(id, payload)
+      } else {
+        const created = await fasilitasApi.create(payload)
+        id = created.id
+      }
+      await fasilitasApi.setGallery(id, finalImages.map((url, i) => ({ image_url: url, order: i, is_cover: i === data.coverIndex })))
+
+      const fresh = await fasilitasApi.getAll()
+      setItems(fresh.map(dbToUi))
+      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Fasilitas telah diterbitkan' : 'Fasilitas tersimpan sebagai draf' })
+      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : (data.id ? 'update' : 'create'), feature: 'Fasilitas', item: data.title })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
+      fasilitasApi.getAll().then(d => setItems(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  const handleDelete = async (id) => {
+    setItems(prev => prev.filter(n => n.id !== id))
+    try {
+      await fasilitasApi.remove(id)
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menghapus', message: e.message })
+      fasilitasApi.getAll().then(d => setItems(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
+
   if (view === 'form') return <FasilitasForm initial={editing} onBack={() => setView('list')} onSave={handleSave} fireSnack={fireSnack} />
-  return <FasilitasList items={items} onAdd={openAdd} onEdit={openEdit} onDelete={handleDelete} fireSnack={fireSnack} fireNotif={fireNotif} />
+  return <FasilitasList items={items} onAdd={() => { setEditing(null); setView('form') }} onEdit={n => { setEditing(n); setView('form') }} onDelete={handleDelete} fireSnack={fireSnack} fireNotif={fireNotif} />
 }

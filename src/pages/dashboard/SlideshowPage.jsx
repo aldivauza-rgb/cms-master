@@ -6,6 +6,8 @@ import { ConfirmModal } from '../../components/Modal'
 import { IconEdit, IconExport, IconExit } from '../../components/Icons'
 import slideRow     from '../../assets/slide-row.jpg'
 import slideDefault from '../../assets/slide-default.jpg'
+import { slidesApi } from '../../lib/api'
+import { uploadToStorage } from '../../lib/upload'
 
 const INITIAL_SLIDES = [
   { id: 1, title: 'Slideshow-01', desc: 'Selamat datang di website resmi kami. Kami hadir untuk melayani masyarakat dengan lebih baik.', img: slideRow,     active: true  },
@@ -194,25 +196,52 @@ function EditSlideshowDrawer({ slide, onClose, onSave }) {
 }
 
 export default function SlideshowPage({ fireSnack, fireNotif }) {
-  const [slides, setSlides] = useState(INITIAL_SLIDES)
-  const [initialSnapshot, setInitialSnapshot] = useState(() => JSON.stringify(INITIAL_SLIDES))
-  const [editing, setEditing]                 = useState(null)
-  const [confirmPublish, setConfirmPublish]   = useState(false)
-  const [publishing, setPublishing]           = useState(false)
+  const [slides, setSlides]               = useState([])
+  const [editing, setEditing]             = useState(null)
+  const [confirmPublish, setConfirmPublish] = useState(false)
+  const [publishing, setPublishing]       = useState(false)
+  const [loading, setLoading]             = useState(true)
 
-  const isDirty = JSON.stringify(slides) !== initialSnapshot
+  const dbToUi = (s) => ({ id: s.id, title: s.title || '', desc: s.description || '', img: s.image_url || '', active: s.is_active, order: s.order ?? 0 })
 
-  const handleToggle = (id, value) => {
-    setSlides(prev => prev.map(s => s.id === id ? { ...s, active: value } : s))
-    fireSnack({ type: 'success', title: 'Yeah!', message: value ? 'Slideshow berhasil diaktifkan' : 'Slideshow dinonaktifkan' })
-    fireNotif?.({ action: 'toggle', feature: 'Slideshow' })
+  const load = async () => {
+    try {
+      const data = await slidesApi.getAll()
+      setSlides(data.map(dbToUi))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal memuat', message: e.message })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleSave = (updated) => {
-    setSlides(prev => prev.map(s => s.id === updated.id ? updated : s))
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleToggle = async (id, value) => {
+    setSlides(prev => prev.map(s => s.id === id ? { ...s, active: value } : s))
+    try {
+      await slidesApi.update(id, { is_active: value })
+      fireSnack({ type: 'success', title: 'Yeah!', message: value ? 'Slideshow berhasil diaktifkan' : 'Slideshow dinonaktifkan' })
+      fireNotif?.({ action: 'toggle', feature: 'Slideshow' })
+    } catch (e) {
+      setSlides(prev => prev.map(s => s.id === id ? { ...s, active: !value } : s))
+      fireSnack({ type: 'error', title: 'Gagal', message: e.message })
+    }
+  }
+
+  const handleSave = async (updated) => {
     setEditing(null)
-    fireSnack({ type: 'success', title: 'Yeah!', message: 'Data berhasil diperbarui' })
-    fireNotif?.({ action: 'update', feature: 'Slideshow' })
+    try {
+      const imgUrl = await uploadToStorage(updated.img, 'slides', 'images/')
+      const finalImg = imgUrl || updated.img
+      await slidesApi.update(updated.id, { image_url: finalImg, description: updated.desc })
+      setSlides(prev => prev.map(s => s.id === updated.id ? { ...s, img: finalImg, desc: updated.desc } : s))
+      fireSnack({ type: 'success', title: 'Yeah!', message: 'Data berhasil diperbarui' })
+      fireNotif?.({ action: 'update', feature: 'Slideshow' })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
+      load()
+    }
   }
 
   const handlePublish = () => {
@@ -220,7 +249,6 @@ export default function SlideshowPage({ fireSnack, fireNotif }) {
     setTimeout(() => {
       setPublishing(false)
       setConfirmPublish(false)
-      setInitialSnapshot(JSON.stringify(slides))
       fireSnack({ type: 'primary', title: 'Data diterbitkan', message: 'Perubahan slideshow sudah tayang di website' })
       fireNotif?.({ action: 'publish', feature: 'Slideshow' })
     }, 900)
@@ -228,55 +256,37 @@ export default function SlideshowPage({ fireSnack, fireNotif }) {
 
   const activeCount = slides.filter(s => s.active).length
 
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
+
   return (
     <>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 'var(--text-h)', lineHeight: 1.15, color: '#000' }}>
-            Slideshow
-          </div>
+          <div style={{ fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 'var(--text-h)', lineHeight: 1.15, color: '#000' }}>Slideshow</div>
           <div style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-base)', lineHeight: 1.5, color: 'var(--color-text-light)', marginTop: 6 }}>
             Kelola gambar hero yang tampil di beranda website.{' '}
             <span style={{ color: 'var(--color-text-base)', fontWeight: 500 }}>{activeCount} dari {slides.length} aktif</span>
           </div>
         </div>
-        <ButtonPrimary onClick={() => setConfirmPublish(true)} disabled={!isDirty}>
+        <ButtonPrimary onClick={() => setConfirmPublish(true)}>
           <IconExport size={18} stroke="#fff" /> Terbitkan
         </ButtonPrimary>
       </div>
 
-      {/* Column headers */}
-      <div className="cms-col-headers" style={{
-        width: '100%', display: 'grid',
-        gridTemplateColumns: 'minmax(300px, 32%) 1fr auto',
-        padding: '0 var(--space-lg)',
-        fontFamily: 'var(--font-base)', fontWeight: 600, fontSize: 'clamp(11px, 0.8vw, 14px)',
-        color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.06em',
-      }}>
-        <div>Slide</div>
-        <div>Deskripsi</div>
-        <div style={{ textAlign: 'right', minWidth: 100 }}>Aksi</div>
+      <div className="cms-col-headers" style={{ width: '100%', display: 'grid', gridTemplateColumns: 'minmax(300px, 32%) 1fr auto', padding: '0 var(--space-lg)', fontFamily: 'var(--font-base)', fontWeight: 600, fontSize: 'clamp(11px, 0.8vw, 14px)', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <div>Slide</div><div>Deskripsi</div><div style={{ textAlign: 'right', minWidth: 100 }}>Aksi</div>
       </div>
 
-      {/* Slide list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(12px, 1.2vw, 20px)' }}>
-        {slides.map(s => (
-          <SlideshowRow key={s.id} slide={s} onEdit={setEditing} onToggle={handleToggle} />
-        ))}
+        {slides.length === 0
+          ? <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', fontSize: 14, color: 'var(--color-text-muted)', background: 'var(--color-card)', borderRadius: 'var(--radius-lg)' }}>Belum ada slide. Tambahkan lewat Supabase Dashboard → Table Editor → slides.</div>
+          : slides.map(s => <SlideshowRow key={s.id} slide={s} onEdit={setEditing} onToggle={handleToggle} />)
+        }
       </div>
 
       {editing && <EditSlideshowDrawer slide={editing} onClose={() => setEditing(null)} onSave={handleSave} />}
 
-      <ConfirmModal
-        open={confirmPublish}
-        title="Terbitkan Data"
-        message="Apakah anda yakin ingin menerbitkan data ini? Perubahan akan langsung tampil di website."
-        confirmLabel="Ya, Terbitkan"
-        onConfirm={handlePublish}
-        onClose={() => setConfirmPublish(false)}
-        loading={publishing}
-      />
+      <ConfirmModal open={confirmPublish} title="Terbitkan Data" message="Apakah anda yakin ingin menerbitkan data ini? Perubahan akan langsung tampil di website." confirmLabel="Ya, Terbitkan" onConfirm={handlePublish} onClose={() => setConfirmPublish(false)} loading={publishing} />
     </>
   )
 }

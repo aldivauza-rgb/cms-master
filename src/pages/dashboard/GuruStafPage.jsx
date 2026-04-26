@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ButtonPrimary, ButtonSecondary } from '../../components/Button'
 import TextField from '../../components/TextField'
 import SearchInput from '../../components/SearchInput'
@@ -6,6 +6,8 @@ import Select from '../../components/Select'
 import StatusBadge from '../../components/StatusBadge'
 import { ConfirmModal } from '../../components/Modal'
 import { IconAdd, IconEdit, IconTrash, IconBack, IconImage, IconExport } from '../../components/Icons'
+import { guruStafApi } from '../../lib/api'
+import { uploadToStorage } from '../../lib/upload'
 
 // ─── constants ───────────────────────────────────────────────
 const CUR       = new Date().getFullYear()
@@ -394,40 +396,81 @@ function GuruStafList({ items, onAdd, onEdit, onDelete }) {
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────
-const SEED = [
-  { id: 1, nama: 'Drs. Ahmad Fauzi, M.Pd', jabatan: 'Kepala Sekolah',  foto: null, pendidikan: [], pengalaman: [], prestasi: [], status: 'terbit' },
-  { id: 2, nama: 'Siti Rahayu, S.Pd',       jabatan: 'Guru Matematika', foto: null, pendidikan: [], pengalaman: [], prestasi: [], status: 'terbit' },
-  { id: 3, nama: 'Budi Santoso, S.Kom',     jabatan: 'Guru TIK',        foto: null, pendidikan: [], pengalaman: [], prestasi: [], status: 'draf'   },
-]
-
 export default function GuruStafPage({ fireSnack, fireNotif }) {
   const [view,     setView]     = useState('list')
-  const [items,    setItems]    = useState(SEED)
+  const [items,    setItems]    = useState([])
   const [editItem, setEditItem] = useState(null)
+  const [loading,  setLoading]  = useState(true)
+
+  const dbToUi = (n) => ({
+    id: n.id, nama: n.nama, jabatan: n.jabatan,
+    foto: n.foto_url || null,
+    pendidikan: (n.riwayat_pendidikan || []).map(e => ({ ...e, id: e.id || uid(), confirmed: true })),
+    pengalaman: (n.pengalaman_kerja   || []).map(e => ({ ...e, id: e.id || uid(), confirmed: true })),
+    prestasi:   (n.prestasi           || []).map(e => ({ ...e, id: e.id || uid(), confirmed: true })),
+    status: n.status,
+  })
+
+  const load = async () => {
+    try {
+      const data = await guruStafApi.getAll()
+      setItems(data.map(dbToUi))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal memuat', message: e.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openAdd  = () => { setEditItem(null); setView('form') }
   const openEdit = (item) => { setEditItem(item); setView('form') }
   const goBack   = () => { setView('list'); setEditItem(null) }
 
-  const handleSave = (data) => {
-    if (editItem) {
-      setItems(prev => prev.map(i => i.id === data.id ? data : i))
-      fireSnack({ type: 'success', title: 'Berhasil', message: 'Data berhasil diperbarui' })
-      fireNotif?.({ action: 'update', feature: 'Guru & Staff', item: data.nama })
-    } else {
-      setItems(prev => [...prev, data])
-      fireSnack({ type: 'success', title: 'Berhasil', message: 'Data berhasil ditambahkan' })
-      fireNotif?.({ action: 'create', feature: 'Guru & Staff', item: data.nama })
-    }
+  const handleSave = async (data) => {
     goBack()
+    try {
+      let fotoUrl = null
+      if (data.foto) {
+        if (typeof data.foto === 'string') fotoUrl = data.foto
+        else if (data.foto.file) fotoUrl = await uploadToStorage(data.foto.file, 'guru-staf', 'photos/')
+        else if (data.foto.preview) fotoUrl = await uploadToStorage(data.foto.preview, 'guru-staf', 'photos/')
+      }
+      const clean = (arr) => arr.map(({ id: _id, confirmed: _c, ...rest }) => rest) // eslint-disable-line no-unused-vars
+      const payload = {
+        nama: data.nama, jabatan: data.jabatan, foto_url: fotoUrl,
+        riwayat_pendidikan: clean(data.pendidikan),
+        pengalaman_kerja:   clean(data.pengalaman),
+        prestasi:           clean(data.prestasi),
+        status: data.status,
+      }
+      if (editItem?.id) await guruStafApi.update(editItem.id, payload)
+      else await guruStafApi.create(payload)
+      const fresh = await guruStafApi.getAll()
+      setItems(fresh.map(dbToUi))
+      fireSnack({ type: 'success', title: 'Berhasil', message: editItem ? 'Data berhasil diperbarui' : 'Data berhasil ditambahkan' })
+      fireNotif?.({ action: editItem ? 'update' : 'create', feature: 'Guru & Staff', item: data.nama })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
+      guruStafApi.getAll().then(d => setItems(d.map(dbToUi))).catch(() => {})
+    }
   }
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     const name = items.find(i => i.id === id)?.nama
     setItems(prev => prev.filter(i => i.id !== id))
-    fireSnack({ type: 'success', title: 'Dihapus', message: `Data ${name} telah dihapus` })
-    fireNotif?.({ action: 'delete', feature: 'Guru & Staff', item: name })
+    try {
+      await guruStafApi.remove(id)
+      fireSnack({ type: 'success', title: 'Dihapus', message: `Data ${name} telah dihapus` })
+      fireNotif?.({ action: 'delete', feature: 'Guru & Staff', item: name })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menghapus', message: e.message })
+      guruStafApi.getAll().then(d => setItems(d.map(dbToUi))).catch(() => {})
+    }
   }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
 
   return view === 'list'
     ? <GuruStafList items={items} onAdd={openAdd} onEdit={openEdit} onDelete={handleDelete} />

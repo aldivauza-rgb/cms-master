@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { ButtonPrimary, ButtonSecondary } from '../../components/Button'
 import { ConfirmModal } from '../../components/Modal'
 import { IconExport, IconEye, IconExit } from '../../components/Icons'
+import { profilApi } from '../../lib/api'
+import { uploadToStorage } from '../../lib/upload'
 import slideDefaultUrl from '../../assets/slide-default.jpg'
 import slideRowUrl from '../../assets/slide-row.jpg'
 import coverSuaraUrl from '../../assets/cover-suara.jpg'
@@ -493,6 +495,12 @@ export default function TentangPage({ fireSnack, fireNotif, pageKey = 'tentang' 
     setInitialSnapshot(JSON.stringify(seed.blocks))
     setSelectedId(null)
     setPanelOpen(false)
+    profilApi.get(pageKey).then(data => {
+      if (data?.blocks?.length > 0) {
+        setBlocks(data.blocks)
+        setInitialSnapshot(JSON.stringify(data.blocks))
+      }
+    }).catch(() => {})
   }, [pageKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedBlock = blocks.find(b => b.id === selectedId)
@@ -535,15 +543,37 @@ export default function TentangPage({ fireSnack, fireNotif, pageKey = 'tentang' 
   const selectBlock = (id) => { setSelectedId(id); setPanelOpen(true) }
   const closePanel = () => { setPanelOpen(false); setSelectedId(null) }
 
-  const doSave = () => {
+  const doSave = async () => {
     setSaving(true)
-    setTimeout(() => {
-      setSaving(false)
-      setConfirmType(null)
-      setInitialSnapshot(JSON.stringify(blocks))
+    try {
+      const processed = await Promise.all(blocks.map(async (b) => {
+        if (b.type === 'image' && b.src && (b.src.startsWith('blob:') || b.src.startsWith('data:'))) {
+          const url = await uploadToStorage(b.src, 'profil', 'blocks/')
+          return { ...b, src: url || b.src }
+        }
+        if (b.type === 'gallery' && b.slides) {
+          const slides = await Promise.all(b.slides.map(async (s) => {
+            if (s.src && (s.src.startsWith('blob:') || s.src.startsWith('data:'))) {
+              const url = await uploadToStorage(s.src, 'profil', 'blocks/')
+              return { ...s, src: url || s.src }
+            }
+            return s
+          }))
+          return { ...b, slides }
+        }
+        return b
+      }))
+      setBlocks(processed)
+      await profilApi.save(pageKey, processed)
+      setInitialSnapshot(JSON.stringify(processed))
       fireSnack?.({ type: 'primary', title: 'Berhasil diterbitkan', message: `Halaman "${title}" sekarang tampil di website.` })
       fireNotif?.({ action: 'publish', feature: title || pageKey })
-    }, 600)
+    } catch (e) {
+      fireSnack?.({ type: 'error', title: 'Gagal menyimpan', message: e.message || 'Terjadi kesalahan' })
+    } finally {
+      setSaving(false)
+      setConfirmType(null)
+    }
   }
 
   return (

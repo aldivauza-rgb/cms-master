@@ -11,6 +11,8 @@ import {
 } from '../../components/Icons'
 import avatarUrl from '../../assets/avatar.png'
 import coverWartaUrl from '../../assets/cover-warta.jpg'
+import { majalahApi } from '../../lib/api'
+import { uploadToStorage } from '../../lib/upload'
 import coverSuaraUrl from '../../assets/cover-suara.jpg'
 import coverJendelaUrl from '../../assets/cover-jendela.jpg'
 import coverInspirasiUrl from '../../assets/cover-inspirasi.jpg'
@@ -337,27 +339,55 @@ function MajalahForm({ initial, onBack, onSave, fireSnack }) {
 }
 
 export default function MajalahPage({ fireSnack, fireNotif }) {
-  const [items, setItems] = useState(INITIAL_MAJALAH)
+  const [items,   setItems]   = useState([])
   const [editing, setEditing] = useState(null)
-  const [view, setView] = useState('list')
+  const [view,    setView]    = useState('list')
+  const [loading, setLoading] = useState(true)
 
-  const openAdd = () => { setEditing(null); setView('form') }
-  const openEdit = (n) => { setEditing(n); setView('form') }
-  const handleDelete = (id) => setItems(prev => prev.filter(n => n.id !== id))
-  const handleSave = (data) => {
-    if (data.id) {
-      setItems(prev => prev.map(n => n.id === data.id ? { ...n, ...data } : n))
-      fireSnack({ type: 'success', title: 'Tersimpan', message: data.status === 'terbit' ? 'Majalah telah diterbitkan' : 'Majalah tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'draft', feature: 'Majalah', item: data.title })
-    } else {
-      const nextId = Math.max(0, ...items.map(n => n.id)) + 1
-      setItems(prev => [{ ...data, id: nextId }, ...prev])
-      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Majalah telah diterbitkan' : 'Majalah tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'create', feature: 'Majalah', item: data.title })
+  const dbToUi = (n) => ({ id: n.id, title: n.title, edition: n.edisi || '', publisher: n.publisher || '', date: n.tanggal || '', url: n.link_url || '', cover: n.cover_url || '', status: n.status })
+
+  const load = async () => {
+    try {
+      const data = await majalahApi.getAll()
+      setItems(data.map(dbToUi))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal memuat', message: e.message })
+    } finally {
+      setLoading(false)
     }
-    setView('list'); setEditing(null)
   }
 
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSave = async (data) => {
+    setView('list'); setEditing(null)
+    try {
+      const coverUrl = await uploadToStorage(data.cover, 'majalah', 'covers/')
+      const payload = { title: data.title, edisi: data.edition, publisher: data.publisher || 'Admin', tanggal: data.date || null, link_url: data.url, cover_url: coverUrl || data.cover || null, status: data.status }
+      if (data.id) await majalahApi.update(data.id, payload)
+      else await majalahApi.create(payload)
+      const fresh = await majalahApi.getAll()
+      setItems(fresh.map(dbToUi))
+      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Majalah telah diterbitkan' : 'Majalah tersimpan sebagai draf' })
+      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : (data.id ? 'update' : 'create'), feature: 'Majalah', item: data.title })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
+      majalahApi.getAll().then(d => setItems(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  const handleDelete = async (id) => {
+    setItems(prev => prev.filter(n => n.id !== id))
+    try {
+      await majalahApi.remove(id)
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menghapus', message: e.message })
+      majalahApi.getAll().then(d => setItems(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
+
   if (view === 'form') return <MajalahForm initial={editing} onBack={() => setView('list')} onSave={handleSave} fireSnack={fireSnack} />
-  return <MajalahList items={items} onAdd={openAdd} onEdit={openEdit} onDelete={handleDelete} fireSnack={fireSnack} fireNotif={fireNotif} />
+  return <MajalahList items={items} onAdd={() => { setEditing(null); setView('form') }} onEdit={n => { setEditing(n); setView('form') }} onDelete={handleDelete} fireSnack={fireSnack} fireNotif={fireNotif} />
 }

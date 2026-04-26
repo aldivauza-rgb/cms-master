@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { ButtonPrimary, ButtonSecondary } from '../../components/Button'
 import TextField from '../../components/TextField'
 import SearchInput from '../../components/SearchInput'
@@ -16,6 +16,8 @@ import {
 import avatarUrl     from '../../assets/avatar.png'
 import slideRowUrl   from '../../assets/slide-row.jpg'
 import slideDefUrl   from '../../assets/slide-default.jpg'
+import { beritaApi, beritaKategoriApi } from '../../lib/api'
+import { uploadToStorage } from '../../lib/upload'
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
 const fmtDate = (iso) => { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}` }
@@ -364,26 +366,110 @@ function BeritaForm({ initial, categories, onBack, onSave, fireSnack }) {
 }
 
 export default function BeritaPage({ fireSnack, fireNotif }) {
-  const [news,       setNews]       = useState(INITIAL_NEWS)
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
+  const [news,       setNews]       = useState([])
+  const [categories, setCategories] = useState([{ id: 'all', label: 'Semua', locked: true }])
   const [editing,    setEditing]    = useState(null)
   const [view,       setView]       = useState('list')
+  const [loading,    setLoading]    = useState(true)
 
-  const handleSave = (data) => {
-    if (data.id) {
-      setNews(prev => prev.map(n => n.id === data.id ? { ...n, ...data } : n))
-      fireSnack({ type: 'success', title: 'Tersimpan', message: data.status === 'terbit' ? 'Berita telah diterbitkan' : 'Berita tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'draft', feature: 'Berita', item: data.title })
-    } else {
-      const nextId = Math.max(0, ...news.map(n => n.id)) + 1
-      setNews(prev => [{ ...data, id: nextId }, ...prev])
-      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Berita telah diterbitkan' : 'Berita tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'create', feature: 'Berita', item: data.title })
+  const catsFromDb = (dbCats) => [
+    { id: 'all', label: 'Semua', locked: true },
+    ...dbCats.map(c => ({ id: c.id, label: c.name })),
+  ]
+  const newsFromDb = (dbNews) => dbNews.map(n => ({
+    id: n.id, title: n.title, content: n.content || '',
+    category: n.kategori_id || '',
+    thumb: n.cover_url || '',
+    author: n.publisher || 'Admin',
+    date: n.published_at || n.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+    status: n.status,
+  }))
+
+  const loadAll = async () => {
+    try {
+      const [dbCats, dbNews] = await Promise.all([beritaKategoriApi.getAll(), beritaApi.getAll()])
+      setCategories(catsFromDb(dbCats))
+      setNews(newsFromDb(dbNews))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal memuat', message: e.message })
+    } finally {
+      setLoading(false)
     }
-    setView('list'); setEditing(null)
   }
 
-  if (view === 'form')     return <BeritaForm initial={editing} categories={categories} onBack={() => setView('list')} onSave={handleSave} fireSnack={fireSnack} />
-  if (view === 'kategori') return <KategoriPage categories={categories} news={news} onBack={() => setView('list')} onAdd={c => setCategories(prev => [...prev, c])} onDelete={id => { setCategories(prev => prev.filter(c => c.id !== id)); setNews(prev => prev.map(n => n.category === id ? { ...n, category: 'all' } : n)) }} fireSnack={fireSnack} />
-  return <BeritaList news={news} categories={categories} onAdd={() => { setEditing(null); setView('form') }} onManageCategories={() => setView('kategori')} onEdit={n => { setEditing(n); setView('form') }} onDelete={id => setNews(prev => prev.filter(n => n.id !== id))} fireSnack={fireSnack} fireNotif={fireNotif} />
+  useEffect(() => { loadAll() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSave = async (data) => {
+    setView('list'); setEditing(null)
+    try {
+      const coverUrl = await uploadToStorage(data.thumb, 'berita', 'covers/')
+      const payload = {
+        title: data.title, content: data.content,
+        kategori_id: data.category || null,
+        cover_url: coverUrl || data.thumb || null,
+        publisher: data.author || 'Admin',
+        published_at: data.date || null,
+        status: data.status,
+      }
+      if (data.id) await beritaApi.update(data.id, payload)
+      else await beritaApi.create(payload)
+      const dbNews = await beritaApi.getAll()
+      setNews(newsFromDb(dbNews))
+      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Berita telah diterbitkan' : 'Berita tersimpan sebagai draf' })
+      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : (data.id ? 'update' : 'create'), feature: 'Berita', item: data.title })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
+      beritaApi.getAll().then(d => setNews(newsFromDb(d))).catch(() => {})
+    }
+  }
+
+  const handleDeleteNews = async (id) => {
+    setNews(prev => prev.filter(n => n.id !== id))
+    try {
+      await beritaApi.remove(id)
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menghapus', message: e.message })
+      beritaApi.getAll().then(d => setNews(newsFromDb(d))).catch(() => {})
+    }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
+
+  if (view === 'form')
+    return <BeritaForm initial={editing} categories={categories} onBack={() => setView('list')} onSave={handleSave} fireSnack={fireSnack} />
+
+  if (view === 'kategori')
+    return (
+      <KategoriPage
+        categories={categories}
+        news={news}
+        onBack={() => setView('list')}
+        onAdd={async (c) => {
+          try {
+            await beritaKategoriApi.create(c.label)
+            const dbCats = await beritaKategoriApi.getAll()
+            setCategories(catsFromDb(dbCats))
+          } catch (e) { fireSnack({ type: 'error', title: 'Gagal', message: e.message }) }
+        }}
+        onDelete={async (id) => {
+          try {
+            await beritaKategoriApi.remove(id)
+            setCategories(prev => prev.filter(c => c.id !== id))
+            setNews(prev => prev.map(n => n.category === id ? { ...n, category: '' } : n))
+          } catch (e) { fireSnack({ type: 'error', title: 'Gagal', message: e.message }) }
+        }}
+        fireSnack={fireSnack}
+      />
+    )
+
+  return (
+    <BeritaList
+      news={news} categories={categories}
+      onAdd={() => { setEditing(null); setView('form') }}
+      onManageCategories={() => setView('kategori')}
+      onEdit={n => { setEditing(n); setView('form') }}
+      onDelete={handleDeleteNews}
+      fireSnack={fireSnack} fireNotif={fireNotif}
+    />
+  )
 }

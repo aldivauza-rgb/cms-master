@@ -12,6 +12,7 @@ import {
   IconExport, IconBack, IconFilter,
 } from '../../components/Icons'
 import avatarUrl from '../../assets/avatar.png'
+import { dokumenApi } from '../../lib/api'
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
 const fmtDate = (iso) => { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}` }
@@ -309,27 +310,54 @@ function DokumenForm({ initial, onBack, onSave, fireSnack }) {
 }
 
 export default function DokumenPage({ fireSnack, fireNotif }) {
-  const [docs, setDocs] = useState(INITIAL_DOKUMEN)
+  const [docs,    setDocs]    = useState([])
   const [editing, setEditing] = useState(null)
-  const [view, setView] = useState('list')
+  const [view,    setView]    = useState('list')
+  const [loading, setLoading] = useState(true)
 
-  const openAdd = () => { setEditing(null); setView('form') }
-  const openEdit = (n) => { setEditing(n); setView('form') }
-  const handleDelete = (id) => setDocs(prev => prev.filter(n => n.id !== id))
-  const handleSave = (data) => {
-    if (data.id) {
-      setDocs(prev => prev.map(n => n.id === data.id ? { ...n, ...data } : n))
-      fireSnack({ type: 'success', title: 'Tersimpan', message: data.status === 'terbit' ? 'Dokumen telah diterbitkan' : 'Dokumen tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'draft', feature: 'Dokumen', item: data.title })
-    } else {
-      const nextId = Math.max(0, ...docs.map(n => n.id)) + 1
-      setDocs(prev => [{ ...data, id: nextId }, ...prev])
-      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Dokumen telah diterbitkan' : 'Dokumen tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : 'create', feature: 'Dokumen', item: data.title })
+  const dbToUi = (n) => ({ id: n.id, title: n.title, publisher: n.publisher || '', date: n.tanggal || '', url: n.link_url || '', status: n.status })
+
+  const load = async () => {
+    try {
+      const data = await dokumenApi.getAll()
+      setDocs(data.map(dbToUi))
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal memuat', message: e.message })
+    } finally {
+      setLoading(false)
     }
-    setView('list'); setEditing(null)
   }
 
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSave = async (data) => {
+    setView('list'); setEditing(null)
+    try {
+      const payload = { title: data.title, publisher: data.publisher || 'Admin', tanggal: data.date || null, link_url: data.url, status: data.status }
+      if (data.id) await dokumenApi.update(data.id, payload)
+      else await dokumenApi.create(payload)
+      const fresh = await dokumenApi.getAll()
+      setDocs(fresh.map(dbToUi))
+      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Dokumen telah diterbitkan' : 'Dokumen tersimpan sebagai draf' })
+      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : (data.id ? 'update' : 'create'), feature: 'Dokumen', item: data.title })
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
+      dokumenApi.getAll().then(d => setDocs(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  const handleDelete = async (id) => {
+    setDocs(prev => prev.filter(n => n.id !== id))
+    try {
+      await dokumenApi.remove(id)
+    } catch (e) {
+      fireSnack({ type: 'error', title: 'Gagal menghapus', message: e.message })
+      dokumenApi.getAll().then(d => setDocs(d.map(dbToUi))).catch(() => {})
+    }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
+
   if (view === 'form') return <DokumenForm initial={editing} onBack={() => setView('list')} onSave={handleSave} fireSnack={fireSnack} />
-  return <DokumenList docs={docs} onAdd={openAdd} onEdit={openEdit} onDelete={handleDelete} fireSnack={fireSnack} fireNotif={fireNotif} />
+  return <DokumenList docs={docs} onAdd={() => { setEditing(null); setView('form') }} onEdit={n => { setEditing(n); setView('form') }} onDelete={handleDelete} fireSnack={fireSnack} fireNotif={fireNotif} />
 }
