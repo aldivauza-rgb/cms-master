@@ -434,8 +434,8 @@ export default function GuruStafPage({ fireSnack, fireNotif }) {
       let fotoUrl = null
       if (data.foto) {
         if (typeof data.foto === 'string') fotoUrl = data.foto
-        else if (data.foto.file) fotoUrl = await uploadToStorage(data.foto.file, 'guru-staf', 'photos/')
-        else if (data.foto.preview) fotoUrl = await uploadToStorage(data.foto.preview, 'guru-staf', 'photos/')
+        else if (data.foto.file) fotoUrl = await uploadToStorage(data.foto.file, 'guru-staff', 'photos/')
+        else if (data.foto.preview) fotoUrl = await uploadToStorage(data.foto.preview, 'guru-staff', 'photos/')
       }
       const clean = (arr) => arr.map(({ id: _id, confirmed: _c, ...rest }) => rest) // eslint-disable-line no-unused-vars
       const payload = {
