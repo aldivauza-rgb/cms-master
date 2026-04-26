@@ -1,0 +1,139 @@
+@import './variables.css';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  font-family: var(--font-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+input, textarea, button, select {
+  font-family: var(--font-base);
+}
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb    { background: #cbd0d8; border-radius: 8px; }
+::-webkit-scrollbar-track    { background: transparent; }
+
+/* ── Keyframes ─────────────────────────────────────────── */
+@keyframes cms-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes cms-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes cms-scale {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes cms-slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Bootstrap overrides ───────────────────────────────── */
+:root {
+  --bs-font-sans-serif: 'Inter', system-ui, sans-serif;
+  --bs-body-font-family: var(--bs-font-sans-serif);
+  --bs-body-color: var(--color-text-dark);
+  --bs-border-color: var(--color-border);
+  --bs-border-radius: var(--radius-lg);
+}
+
+/* ── CMS Sidebar responsive ────────────────────────────── */
+@media (max-width: 900px) {
+  .cms-sidebar {
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform var(--transition-slide) !important;
+    z-index: var(--z-sidebar) !important;
+  }
+  .cms-sidebar.open {
+    transform: translateX(0);
+  }
+  .cms-sidebar-backdrop {
+    display: block !important;
+  }
+  .cms-mobile-bar {
+    display: flex !important;
+  }
+  .cms-col-headers {
+    display: none !important;
+  }
+  .cms-row {
+    grid-template-columns: 1fr !important;
+  }
+  .cms-row > div:nth-child(3) {
+    justify-content: flex-start !important;
+    padding-top: 0 !important;
+  }
+}
+@media (min-width: 901px) {
+  .cms-sidebar-backdrop {
+    display: none !important;
+  }
+}
+@media (max-width: 560px) {
+  .cms-thumb {
+    width: 120px !important;
+  }
+}
+
+/* ── Login identity panel ──────────────────────────────── */
+@media (max-width: 768px) {
+  .cms-login-identity {
+    display: none !important;
+  }
+}
+
+/* ── Responsive form grid ──────────────────────────────── */
+@media (max-width: 900px) {
+  .cms-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Rich editor placeholder ───────────────────────────── */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+[contenteditable] blockquote {
+  border-left: 3px solid var(--color-blue);
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: var(--color-text-base);
+}
+[contenteditable] h1,
+[contenteditable] h2,
+[contenteditable] h3 {
+  margin: 0 0 8px;
+  color: var(--color-text-dark);
+  font-weight: 700;
+}
+[contenteditable] h1 { font-size: 22px; }
+[contenteditable] h2 { font-size: 18px; }
+[contenteditable] h3 { font-size: 16px; }
+[contenteditable] a  { color: var(--color-blue); text-decoration: underline; }
+
+/* ── Agenda highlight grid ─────────────────────────────── */
+@media (max-width: 900px) {
+  .ag-highlight-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

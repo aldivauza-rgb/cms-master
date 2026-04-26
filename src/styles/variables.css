@@ -1,0 +1,88 @@
+:root {
+  /* ── Brand Colors ─────────────────────────────────────── */
+  --color-navy:        #010E23;
+  --color-dark-blue:   #051B3E;
+  --color-blue:        #046CF2;
+  --color-blue-hover:  #0357C7;
+  --color-blue-light:  #E6F0FE;
+
+  /* ── Text Colors ──────────────────────────────────────── */
+  --color-text-dark:   #010E23;
+  --color-text-base:   #354764;
+  --color-text-light:  #5D6B82;
+  --color-text-muted:  #97A2B0;
+  --color-text-white:  #F9F9F9;
+
+  /* ── Semantic Colors ─────────────────────────────────── */
+  --color-success:     #007955;
+  --color-success-bg:  #EAF8F4;
+  --color-error:       #B3202F;
+  --color-error-light: #FF5263;
+  --color-error-bg:    #FFEEEF;
+  --color-error-red:   #EA2227;
+  --color-warning-fg:  #946A00;
+  --color-warning-bg:  #FFF7E6;
+  --color-warning-dot: #D79B00;
+
+  /* ── Surface Colors ──────────────────────────────────── */
+  --color-bg:          #E8E9F1;
+  --color-card:        #FFFFFF;
+  --color-surface-2:   #F9FAFB;
+  --color-surface-3:   #F1F2F5;
+  --color-border:      #E8E9F1;
+  --color-border-2:    #C5C6CC;
+
+  /* ── Sidebar ─────────────────────────────────────────── */
+  --sidebar-width:     clamp(220px, 18vw, 300px);
+  --sidebar-bg:        var(--color-navy);
+
+  /* ── Typography ──────────────────────────────────────── */
+  --font-base:         'Inter', system-ui, sans-serif;
+  --text-xs:           12px;
+  --text-sm:           clamp(12px, 0.85vw, 14px);
+  --text-base:         clamp(13px, 0.95vw, 15px);
+  --text-md:           clamp(14px, 1vw, 16px);
+  --text-lg:           clamp(16px, 1.2vw, 18px);
+  --text-xl:           clamp(18px, 1.5vw, 22px);
+  --text-2xl:          clamp(22px, 2.2vw, 28px);
+  --text-h:            clamp(24px, 2.4vw, 40px);
+
+  /* ── Spacing ─────────────────────────────────────────── */
+  --space-xs:          clamp(4px, 0.4vw, 6px);
+  --space-sm:          clamp(8px, 0.8vw, 12px);
+  --space-md:          clamp(12px, 1.2vw, 20px);
+  --space-lg:          clamp(16px, 1.6vw, 28px);
+  --space-xl:          clamp(24px, 2.4vw, 40px);
+  --space-2xl:         clamp(32px, 3.5vw, 64px);
+
+  /* ── Border Radius ───────────────────────────────────── */
+  --radius-sm:         8px;
+  --radius-md:         10px;
+  --radius-lg:         12px;
+  --radius-xl:         16px;
+  --radius-2xl:        20px;
+
+  /* ── Control Heights ─────────────────────────────────── */
+  --control-h:         clamp(44px, 3.4vw, 56px);
+  --control-h-sm:      36px;
+
+  /* ── Shadows ─────────────────────────────────────────── */
+  --shadow-card:       0 1px 2px rgba(5, 27, 62, 0.04);
+  --shadow-hover:      0 8px 24px rgba(5, 27, 62, 0.08);
+  --shadow-modal:      0 20px 40px rgba(5, 27, 62, 0.18);
+  --shadow-drawer:     0 24px 48px rgba(5, 27, 62, 0.18);
+  --shadow-snack:      0 4px 12px rgba(5, 27, 62, 0.10);
+
+  /* ── Transitions ─────────────────────────────────────── */
+  --transition-fast:   0.15s ease;
+  --transition-base:   0.18s ease;
+  --transition-slide:  0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ── Z-index ─────────────────────────────────────────── */
+  --z-sidebar:         31;
+  --z-backdrop:        30;
+  --z-drawer:          41;
+  --z-drawer-bd:       40;
+  --z-modal:           50;
+  --z-snack:           60;
+}
