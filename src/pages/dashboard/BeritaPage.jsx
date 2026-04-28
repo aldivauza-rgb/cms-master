@@ -7,7 +7,7 @@ import StatusBadge from '../../components/StatusBadge'
 import { ConfirmModal } from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import TableFooter from '../../components/TableFooter'
-import FilterPopover from '../../components/FilterPopover'ƒ
+import FilterPopover from '../../components/FilterPopover'
 import RichEditor from '../../components/RichEditor'
 import {
   IconAdd, IconEdit, IconTrash, IconExport, IconBack,
@@ -16,7 +16,7 @@ import {
 import avatarUrl     from '../../assets/avatar.png'
 import slideRowUrl   from '../../assets/slide-row.jpg'
 import slideDefUrl   from '../../assets/slide-default.jpg'
-import { WartaApi, WartaKategoriApi } from '../../lib/api'
+import { beritaApi as WartaApi, beritaKategoriApi as WartaKategoriApi } from '../../lib/api'
 import { uploadToStorage } from '../../lib/upload'
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
