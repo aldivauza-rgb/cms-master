@@ -16,7 +16,7 @@ import {
 import avatarUrl     from '../../assets/avatar.png'
 import slideRowUrl   from '../../assets/slide-row.jpg'
 import slideDefUrl   from '../../assets/slide-default.jpg'
-import { beritaApi as WartaApi, beritaKategoriApi as WartaKategoriApi } from '../../lib/api'
+import { beritaApi as BeritaApi, beritaKategoriApi as BeritaKategoriApi } from '../../lib/api'
 import { uploadToStorage } from '../../lib/upload'
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
@@ -47,7 +47,7 @@ const INITIAL_NEWS = [
 ]
 
 const FILTER_SECTIONS = (categories) => [{
-  label: 'Warta',
+  label: 'Berita',
   fields: [
     { key: 'month', label: 'Bulan',    placeholder: 'Pilih Bulan',     options: MONTHS.map((m,i) => ({ value: String(i), label: m })) },
     { key: 'year',  label: 'Tahun',    placeholder: 'Pilih Tahun',     options: [2026,2025,2024,2023].map(y => ({ value: String(y), label: String(y) })) },
@@ -56,7 +56,7 @@ const FILTER_SECTIONS = (categories) => [{
   ],
 }]
 
-function WartaList({ news, categories, onAdd, onManageCategories, onEdit, onDelete, fireSnack, fireNotif }) {
+function BeritaList({ news, categories, onAdd, onManageCategories, onEdit, onDelete, fireSnack, fireNotif }) {
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({ month: '', year: '', status: '', category: '' })
   const [pageSize, setPageSize] = useState(10)
@@ -83,9 +83,9 @@ function WartaList({ news, categories, onAdd, onManageCategories, onEdit, onDele
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 'var(--text-h)', lineHeight: 1.15, color: '#000' }}>Warta</div>
+          <div style={{ fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 'var(--text-h)', lineHeight: 1.15, color: '#000' }}>Berita</div>
           <div style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-base)', lineHeight: 1.5, color: 'var(--color-text-light)', marginTop: 6 }}>
-            Kelola artikel Warta yang tampil di website.{' '}
+            Kelola artikel Berita yang tampil di website.{' '}
             <span style={{ color: 'var(--color-text-base)', fontWeight: 500 }}>{news.length} total · {news.filter(n => n.status === 'terbit').length} terbit</span>
           </div>
         </div>
@@ -99,7 +99,7 @@ function WartaList({ news, categories, onAdd, onManageCategories, onEdit, onDele
           }}>
             <IconTag size={18} stroke="#F9F9F9" /> Atur Kategori
           </button>
-          <ButtonPrimary onClick={onAdd}><IconAdd size={18} stroke="#fff" /> Tambah Warta</ButtonPrimary>
+          <ButtonPrimary onClick={onAdd}><IconAdd size={18} stroke="#fff" /> Tambah Berita</ButtonPrimary>
         </div>
       </div>
 
@@ -128,7 +128,7 @@ function WartaList({ news, categories, onAdd, onManageCategories, onEdit, onDele
             </thead>
             <tbody>
               {pageItems.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-light)', fontFamily: 'var(--font-base)', fontSize: 14 }}>Tidak ada Warta yang cocok dengan filter.</td></tr>
+                <tr><td colSpan={6} style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-light)', fontFamily: 'var(--font-base)', fontSize: 14 }}>Tidak ada Berita yang cocok dengan filter.</td></tr>
               ) : pageItems.map(n => (
                 <tr key={n.id} style={{ borderBottom: '1px solid var(--color-surface-3)' }}>
                   <td style={{ padding: '14px 20px' }}>
@@ -160,10 +160,10 @@ function WartaList({ news, categories, onAdd, onManageCategories, onEdit, onDele
           onPageChange={setPage} onPageSizeChange={n => { setPageSize(n); setPage(1) }} />
       </div>
 
-      <ConfirmModal open={!!confirmDel} title="Hapus Warta"
+      <ConfirmModal open={!!confirmDel} title="Hapus Berita"
         message={confirmDel ? `Apakah kamu yakin ingin menghapus "${confirmDel.title}"? Tindakan ini tidak dapat dibatalkan.` : ''}
         confirmLabel="Ya, Hapus"
-        onConfirm={() => { onDelete(confirmDel.id); fireSnack({ type: 'success', title: 'Berhasil', message: 'Warta telah dihapus' }); fireNotif?.({ action: 'delete', feature: 'Warta', item: confirmDel.title }); setConfirmDel(null) }}
+        onConfirm={() => { onDelete(confirmDel.id); fireSnack({ type: 'success', title: 'Berhasil', message: 'Berita telah dihapus' }); fireNotif?.({ action: 'delete', feature: 'Berita', item: confirmDel.title }); setConfirmDel(null) }}
         onClose={() => setConfirmDel(null)} />
     </>
   )
@@ -199,7 +199,7 @@ function KategoriPage({ categories, news, onBack, onAdd, onDelete, fireSnack }) 
       <div>
         <div style={{ fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 'var(--text-h)', lineHeight: 1.15, color: '#000' }}>Atur Kategori</div>
         <div style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-base)', lineHeight: 1.5, color: 'var(--color-text-light)', marginTop: 6 }}>
-          Tambah atau hapus kategori Warta. Saat kategori dihapus, Warta di dalamnya dipindahkan ke{' '}
+          Tambah atau hapus kategori Berita. Saat kategori dihapus, Berita di dalamnya dipindahkan ke{' '}
           <span style={{ fontWeight: 500, color: 'var(--color-text-base)' }}>"Semua"</span>.
         </div>
       </div>
@@ -232,7 +232,7 @@ function KategoriPage({ categories, news, onBack, onAdd, onDelete, fireSnack }) 
                     {c.label}
                     {c.locked && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--color-surface-3)', color: 'var(--color-text-base)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Default</span>}
                   </div>
-                  <div style={{ fontFamily: 'var(--font-base)', fontSize: 12, color: 'var(--color-text-light)', marginTop: 2 }}>{counts[c.id] || 0} Warta</div>
+                  <div style={{ fontFamily: 'var(--font-base)', fontSize: 12, color: 'var(--color-text-light)', marginTop: 2 }}>{counts[c.id] || 0} Berita</div>
                 </div>
                 {!c.locked
                   ? <button onClick={() => setConfirmDel(c)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid #FFD6DA', background: '#FFF5F6', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -245,7 +245,7 @@ function KategoriPage({ categories, news, onBack, onAdd, onDelete, fireSnack }) 
         </div>
       </div>
       <ConfirmModal open={!!confirmDel} title="Hapus Kategori"
-        message={confirmDel ? `Hapus kategori "${confirmDel.label}"? ${(counts[confirmDel.id] || 0) > 0 ? `${counts[confirmDel.id]} Warta akan dipindahkan ke "Semua".` : 'Tidak ada Warta di kategori ini.'}` : ''}
+        message={confirmDel ? `Hapus kategori "${confirmDel.label}"? ${(counts[confirmDel.id] || 0) > 0 ? `${counts[confirmDel.id]} Berita akan dipindahkan ke "Semua".` : 'Tidak ada Berita di kategori ini.'}` : ''}
         confirmLabel="Ya, Hapus"
         onConfirm={() => { onDelete(confirmDel.id); fireSnack({ type: 'success', title: 'Berhasil', message: `Kategori dihapus` }); setConfirmDel(null) }}
         onClose={() => setConfirmDel(null)} />
@@ -253,7 +253,7 @@ function KategoriPage({ categories, news, onBack, onAdd, onDelete, fireSnack }) 
   )
 }
 
-function WartaForm({ initial, categories, onBack, onSave, fireSnack }) {
+function BeritaForm({ initial, categories, onBack, onSave, fireSnack }) {
   const isEdit = !!initial?.id
   const today  = new Date().toISOString().slice(0, 10)
   const [title,    setTitle]    = useState(initial?.title    || '')
@@ -276,7 +276,7 @@ function WartaForm({ initial, categories, onBack, onSave, fireSnack }) {
   const requestBack = () => { if (isDirty && !isEdit) setConfirmType('exit'); else onBack() }
 
   const validate = () => {
-    if (!title.trim()) { fireSnack({ type: 'error', title: 'Gagal', message: 'Judul Warta wajib diisi' }); return false }
+    if (!title.trim()) { fireSnack({ type: 'error', title: 'Gagal', message: 'Judul Berita wajib diisi' }); return false }
     if (!category)     { fireSnack({ type: 'error', title: 'Gagal', message: 'Kategori wajib dipilih'  }); return false }
     return true
   }
@@ -298,10 +298,10 @@ function WartaForm({ initial, categories, onBack, onSave, fireSnack }) {
         <IconBack size={18} stroke="var(--color-text-dark)"/> Kembali
       </button>
       <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-lg)', padding: 'clamp(20px, 2.4vw, 32px)', display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <div style={{ fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 20, color: 'var(--color-text-dark)' }}>{isEdit ? 'Edit Warta' : 'Tambah Warta'}</div>
+        <div style={{ fontFamily: 'var(--font-base)', fontWeight: 700, fontSize: 20, color: 'var(--color-text-dark)' }}>{isEdit ? 'Edit Berita' : 'Tambah Berita'}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24 }} className="cms-form-grid">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-            <TextField label="Judul Warta" required value={title} onChange={setTitle} placeholder="Masukkan judul Warta" />
+            <TextField label="Judul Berita" required value={title} onChange={setTitle} placeholder="Masukkan judul Berita" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontFamily: 'var(--font-base)', fontSize: 12, fontWeight: 500, color: 'var(--color-text-base)' }}>Penulis</label>
               <div style={{ height: 'var(--control-h)', borderRadius: 'var(--radius-lg)', background: 'var(--color-surface-3)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px' }}>
@@ -346,7 +346,7 @@ function WartaForm({ initial, categories, onBack, onSave, fireSnack }) {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: 'var(--font-base)', fontSize: 12, fontWeight: 500, color: 'var(--color-text-base)' }}>Konten Warta <span style={{ color: 'var(--color-error-red)' }}>*</span></label>
+          <label style={{ fontFamily: 'var(--font-base)', fontSize: 12, fontWeight: 500, color: 'var(--color-text-base)' }}>Konten Berita <span style={{ color: 'var(--color-error-red)' }}>*</span></label>
           <RichEditor value={content} onChange={setContent} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingTop: 8, borderTop: '1px solid var(--color-surface-3)' }}>
@@ -358,14 +358,14 @@ function WartaForm({ initial, categories, onBack, onSave, fireSnack }) {
           </div>
         </div>
       </div>
-      <ConfirmModal open={confirmType === 'draf'}   title="Simpan sebagai Draf"   message="Warta akan disimpan tanpa dipublikasikan."                                 confirmLabel="Ya, Simpan"     loading={saving} onConfirm={() => doSave('draf')}   onClose={() => setConfirmType(null)} />
-      <ConfirmModal open={confirmType === 'terbit'} title="Terbitkan Warta"       message="Warta akan langsung tampil di website setelah diterbitkan."                 confirmLabel="Ya, Terbitkan" loading={saving} onConfirm={() => doSave('terbit')} onClose={() => setConfirmType(null)} />
+      <ConfirmModal open={confirmType === 'draf'}   title="Simpan sebagai Draf"   message="Berita akan disimpan tanpa dipublikasikan."                                 confirmLabel="Ya, Simpan"     loading={saving} onConfirm={() => doSave('draf')}   onClose={() => setConfirmType(null)} />
+      <ConfirmModal open={confirmType === 'terbit'} title="Terbitkan Berita"       message="Berita akan langsung tampil di website setelah diterbitkan."                 confirmLabel="Ya, Terbitkan" loading={saving} onConfirm={() => doSave('terbit')} onClose={() => setConfirmType(null)} />
       <ConfirmModal open={confirmType === 'exit'}   title="Keluar tanpa menyimpan?" message="Perubahan yang belum disimpan akan hilang."                                confirmLabel="Ya, Keluar"    onConfirm={() => { setConfirmType(null); onBack() }}   onClose={() => setConfirmType(null)} />
     </>
   )
 }
 
-export default function WartaPage({ fireSnack, fireNotif }) {
+export default function BeritaPage({ fireSnack, fireNotif }) {
   const [news,       setNews]       = useState([])
   const [categories, setCategories] = useState([{ id: 'all', label: 'Semua', locked: true }])
   const [editing,    setEditing]    = useState(null)
@@ -387,7 +387,7 @@ export default function WartaPage({ fireSnack, fireNotif }) {
 
   const loadAll = async () => {
     try {
-      const [dbCats, dbNews] = await Promise.all([WartaKategoriApi.getAll(), WartaApi.getAll()])
+      const [dbCats, dbNews] = await Promise.all([BeritaKategoriApi.getAll(), BeritaApi.getAll()])
       setCategories(catsFromDb(dbCats))
       setNews(newsFromDb(dbNews))
     } catch (e) {
@@ -402,7 +402,7 @@ export default function WartaPage({ fireSnack, fireNotif }) {
   const handleSave = async (data) => {
     setView('list'); setEditing(null)
     try {
-      const coverUrl = await uploadToStorage(data.thumb, 'Warta', 'covers/')
+      const coverUrl = await uploadToStorage(data.thumb, 'Berita', 'covers/')
       const payload = {
         title: data.title, content: data.content,
         kategori_id: data.category || null,
@@ -411,32 +411,32 @@ export default function WartaPage({ fireSnack, fireNotif }) {
         published_at: data.date || null,
         status: data.status,
       }
-      if (data.id) await WartaApi.update(data.id, payload)
-      else await WartaApi.create(payload)
-      const dbNews = await WartaApi.getAll()
+      if (data.id) await BeritaApi.update(data.id, payload)
+      else await BeritaApi.create(payload)
+      const dbNews = await BeritaApi.getAll()
       setNews(newsFromDb(dbNews))
-      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Warta telah diterbitkan' : 'Warta tersimpan sebagai draf' })
-      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : (data.id ? 'update' : 'create'), feature: 'Warta', item: data.title })
+      fireSnack({ type: data.status === 'terbit' ? 'primary' : 'success', title: 'Berhasil', message: data.status === 'terbit' ? 'Berita telah diterbitkan' : 'Berita tersimpan sebagai draf' })
+      fireNotif?.({ action: data.status === 'terbit' ? 'publish' : (data.id ? 'update' : 'create'), feature: 'Berita', item: data.title })
     } catch (e) {
       fireSnack({ type: 'error', title: 'Gagal menyimpan', message: e.message })
-      WartaApi.getAll().then(d => setNews(newsFromDb(d))).catch(() => {})
+      BeritaApi.getAll().then(d => setNews(newsFromDb(d))).catch(() => {})
     }
   }
 
   const handleDeleteNews = async (id) => {
     setNews(prev => prev.filter(n => n.id !== id))
     try {
-      await WartaApi.remove(id)
+      await BeritaApi.remove(id)
     } catch (e) {
       fireSnack({ type: 'error', title: 'Gagal menghapus', message: e.message })
-      WartaApi.getAll().then(d => setNews(newsFromDb(d))).catch(() => {})
+      BeritaApi.getAll().then(d => setNews(newsFromDb(d))).catch(() => {})
     }
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'var(--font-base)', color: 'var(--color-text-light)' }}>Memuat data…</div>
 
   if (view === 'form')
-    return <WartaForm initial={editing} categories={categories} onBack={() => setView('list')} onSave={handleSave} fireSnack={fireSnack} />
+    return <BeritaForm initial={editing} categories={categories} onBack={() => setView('list')} onSave={handleSave} fireSnack={fireSnack} />
 
   if (view === 'kategori')
     return (
@@ -446,14 +446,14 @@ export default function WartaPage({ fireSnack, fireNotif }) {
         onBack={() => setView('list')}
         onAdd={async (c) => {
           try {
-            await WartaKategoriApi.create(c.label)
-            const dbCats = await WartaKategoriApi.getAll()
+            await BeritaKategoriApi.create(c.label)
+            const dbCats = await BeritaKategoriApi.getAll()
             setCategories(catsFromDb(dbCats))
           } catch (e) { fireSnack({ type: 'error', title: 'Gagal', message: e.message }) }
         }}
         onDelete={async (id) => {
           try {
-            await WartaKategoriApi.remove(id)
+            await BeritaKategoriApi.remove(id)
             setCategories(prev => prev.filter(c => c.id !== id))
             setNews(prev => prev.map(n => n.category === id ? { ...n, category: '' } : n))
           } catch (e) { fireSnack({ type: 'error', title: 'Gagal', message: e.message }) }
@@ -463,7 +463,7 @@ export default function WartaPage({ fireSnack, fireNotif }) {
     )
 
   return (
-    <WartaList
+    <BeritaList
       news={news} categories={categories}
       onAdd={() => { setEditing(null); setView('form') }}
       onManageCategories={() => setView('kategori')}
